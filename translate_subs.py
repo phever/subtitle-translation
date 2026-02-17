@@ -38,4 +38,14 @@ def translate_srt(input_file, output_file, src_lang='sv', dest_lang='en'):
         f.write(srt.compose(translated_subs))
 
 if __name__ == "__main__":
-    translate_srt('swedish.srt', 'english.srt')
+    import sys
+    if len(sys.argv) < 3:
+        print("Usage: python translate_subs.py <input_srt> <output_srt> [src_lang] [dest_lang]")
+        sys.exit(1)
+    
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    src_lang = sys.argv[3] if len(sys.argv) > 3 else 'sv'
+    dest_lang = sys.argv[4] if len(sys.argv) > 4 else 'en'
+    
+    translate_srt(input_file, output_file, src_lang, dest_lang)

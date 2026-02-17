@@ -1,16 +1,21 @@
 #!/bin/bash
 
 # Check if correct number of arguments are provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <input_file> <output_file>"
-    echo "Example: $0 movie.mkv movie_with_english.mkv"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <input_file> <output_file> <language>"
+    echo "Example: $0 movie.mkv movie_with_english.mkv swedish"
     exit 1
 fi
 
 INPUT_FILE="$1"
-STRIPPED_SUBTITLES="$1.srt"
-SUBTITLE_FILE="unknown.srt"
-SCRIPT_DIR="/home/$USER/subtitle-translation"
+OUTPUT_FILE="$2"
+LANGUAGE="$3"
+
+ORIGINAL_SRT="${LANGUAGE}.srt"
+ENGLISH_SRT="en.srt"
+STRIPPED_VIDEO="${INPUT_FILE%.mkv}.stripped.mkv"
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 MERGE_SCRIPT="merge_subtitles.py"
 TRANSLATION_SCRIPT="translate_subs.py"
 
@@ -20,56 +25,59 @@ if [ ! -f "$INPUT_FILE" ]; then
     exit 1
 fi
 
-# 1. Strip existing subtitles using ffmpeg
-echo "Step 1: Stripping existing subtitles from $INPUT_FILE..."
-# -map 0:v (video) -map 0:a (audio) -c copy (no re-encoding)
-if ffmpeg -i "$INPUT_FILE" -map 0:v -map 0:a -c copy "$STRIPPED_SUBTITLES" -y -loglevel error; then
-    echo "Success: Subtitles stripped and saved to $STRIPPED_SUBTITLES."
-    
-    # 2. Check if the python script and subtitle file exist
-    if [ ! -f "$SCRIPT_DIR/$MERGE_SCRIPT" ]; then
-        echo "Error: Python script '$SCRIPT_DIR/$MERGE_SCRIPT' not found."
-        exit 1
-    fi
+# Determine Python executable
+if [ -f "$SCRIPT_DIR/.venv/bin/python3" ]; then
+    PYTHON_EXEC="$SCRIPT_DIR/.venv/bin/python3"
+elif [ -f "$SCRIPT_DIR/venv/bin/python3" ]; then
+    PYTHON_EXEC="$SCRIPT_DIR/venv/bin/python3"
+else
+    PYTHON_EXEC="python3"
+fi
 
-    if [ ! -f "$SCRIPT_DIR/$TRANSLATION_SCRIPT" ]; then
-        echo "Error: Python script '$SCRIPT_DIR/$TRANSLATION_SCRIPT' not found."
-        exit 1
-    fi
+# 1. Strip/Extract the subtitle track from $1 mkv and save as $3.srt
+echo "Step 1: Extracting subtitle track from $INPUT_FILE to $ORIGINAL_SRT..."
+if ffmpeg -i "$INPUT_FILE" -map 0:s:0 "$ORIGINAL_SRT" -y -loglevel error; then
+    echo "Success: Subtitle extracted to $ORIGINAL_SRT."
+else
+    echo "Error: Failed to extract subtitles. Does the file have subtitle tracks?"
+    exit 1
+fi
 
-    echo "Step 2: Executing $SCRIPT_DIR/$TRANSLATION_SCRIPT to translate subtitles..."
-    
-    # Use the virtual environment python if it exists, otherwise system python3
-    if [ -f "$SCRIPT_DIR/.venv/bin/python3" ]; then
-        PYTHON_EXEC="$SCRIPT_DIR/.venv/bin/python3"
-    elif [ -f "$SCRIPT_DIR/venv/bin/python3" ]; then
-        PYTHON_EXEC="$SCRIPT_DIR/venv/bin/python3"
+# 2. Create a version of the mkv without subtitles (stripped)
+echo "Step 2: Creating stripped video (no subtitles) from $INPUT_FILE..."
+if ffmpeg -i "$INPUT_FILE" -map 0:v -map 0:a -c copy "$STRIPPED_VIDEO" -y -loglevel error; then
+    echo "Success: Stripped video created at $STRIPPED_VIDEO."
+else
+    echo "Error: Failed to create stripped video."
+    exit 1
+fi
+
+# 3. Run the translate_subs.py to create en.srt
+echo "Step 3: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
+if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE" "en"; then
+    echo "Success: Subtitle translation completed."
+else
+    echo "Error: Subtitle translation failed."
+    exit 1
+fi
+
+# 4. Merge the $1 mkv (stripped) with $3.srt and en.srt
+echo "Step 4: Merging original and translated subtitles into new mkv..."
+if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$STRIPPED_VIDEO" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
+    # The merge_subtitles.py script creates a file with '.final.mkv' suffix
+    FINAL_OUTPUT="${STRIPPED_VIDEO%.stripped.mkv}.final.mkv"
+    if [ -f "$FINAL_OUTPUT" ]; then
+        mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
+        echo "Successfully created: $OUTPUT_FILE"
+        # Cleanup temporary files
+        rm "$STRIPPED_VIDEO"
     else
-        PYTHON_EXEC="python3"
-    fi
-
-    if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$STRIPPED_SUBTITLES" "english.srt"; then
-        echo "Subtitle translation completed successfully."
-    else
-        echo "Error: Python translation script failed."
-        exit 1
-    fi
-    
-    # if [ ! -f "$SUBTITLE_FILE" ]; then
-    #     echo "Error: Subtitle file '$SUBTITLE_FILE' not found. Please run translation first."
-    #     exit 1
-    # fi
-
-    # 3. Execute the Python script to merge subtitles
-    echo "Step 2: Executing $SCRIPT_DIR/$MERGE_SCRIPT to merge $SUBTITLE_FILE..."
-    
-    if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "english.srt"; then
-        echo "All processing steps completed successfully."
-    else
-        echo "Error: Python merge script failed."
+        echo "Error: Final output file not found."
         exit 1
     fi
 else
-    echo "Error: ffmpeg failed to strip subtitles from $INPUT_FILE."
+    echo "Error: Merging failed."
     exit 1
 fi
+
+echo "Processing complete."
