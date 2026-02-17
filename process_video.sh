@@ -13,9 +13,8 @@ LANGUAGE="$3"
 
 ORIGINAL_SRT="${LANGUAGE}.srt"
 ENGLISH_SRT="en.srt"
-STRIPPED_VIDEO="${INPUT_FILE%.mkv}.stripped.mkv"
 
-SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+SCRIPT_DIR="${HOME}/subtitle-translation"
 MERGE_SCRIPT="merge_subtitles.py"
 TRANSLATION_SCRIPT="translate_subs.py"
 
@@ -43,17 +42,8 @@ else
     exit 1
 fi
 
-# 2. Create a version of the mkv without subtitles (stripped)
-echo "Step 2: Creating stripped video (no subtitles) from $INPUT_FILE..."
-if ffmpeg -i "$INPUT_FILE" -map 0:v -map 0:a -c copy "$STRIPPED_VIDEO" -y -loglevel error; then
-    echo "Success: Stripped video created at $STRIPPED_VIDEO."
-else
-    echo "Error: Failed to create stripped video."
-    exit 1
-fi
-
 # 3. Run the translate_subs.py to create en.srt
-echo "Step 3: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
+echo "Step 2: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
 if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE" "en"; then
     echo "Success: Subtitle translation completed."
 else
@@ -62,15 +52,15 @@ else
 fi
 
 # 4. Merge the $1 mkv (stripped) with $3.srt and en.srt
-echo "Step 4: Merging original and translated subtitles into new mkv..."
-if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$STRIPPED_VIDEO" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
+echo "Step 3: Merging original and translated subtitles into new mkv..."
+if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
     # The merge_subtitles.py script creates a file with '.final.mkv' suffix
-    FINAL_OUTPUT="${STRIPPED_VIDEO%.stripped.mkv}.final.mkv"
+    FINAL_OUTPUT="${INPUT_FILE}.final.mkv"
     if [ -f "$FINAL_OUTPUT" ]; then
         mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
         echo "Successfully created: $OUTPUT_FILE"
         # Cleanup temporary files
-        rm "$STRIPPED_VIDEO"
+        rm "$ENGLISH_SRT" "$ORIGINAL_SRT"
     else
         echo "Error: Final output file not found."
         exit 1
