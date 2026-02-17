@@ -2,27 +2,18 @@
 
 # Check if correct number of arguments are provided
 if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <input_file> <output_file> <language>"
+    echo "Usage: $0 <input_file> <output_file> <language_name_or_code>"
     echo "Example: $0 movie.mkv movie_with_english.mkv swedish"
     exit 1
 fi
 
 INPUT_FILE="$1"
 OUTPUT_FILE="$2"
-LANGUAGE="$3"
-
-ORIGINAL_SRT="${LANGUAGE}.srt"
-ENGLISH_SRT="en.srt"
+LANG_INPUT="$3"
 
 SCRIPT_DIR="${HOME}/subtitle-translation"
 MERGE_SCRIPT="merge_subtitles.py"
 TRANSLATION_SCRIPT="translate_subs.py"
-
-# Ensure the input file exists
-if [ ! -f "$INPUT_FILE" ]; then
-    echo "Error: Input file '$INPUT_FILE' not found."
-    exit 1
-fi
 
 # Determine Python executable
 if [ -f "$SCRIPT_DIR/.venv/bin/python3" ]; then
@@ -31,6 +22,18 @@ elif [ -f "$SCRIPT_DIR/venv/bin/python3" ]; then
     PYTHON_EXEC="$SCRIPT_DIR/venv/bin/python3"
 else
     PYTHON_EXEC="python3"
+fi
+
+# Resolve language code (e.g., swedish -> sv)
+LANGUAGE=$($PYTHON_EXEC -c "from deep_translator.constants import GOOGLE_LANGUAGES_TO_CODES; print(GOOGLE_LANGUAGES_TO_CODES.get('$LANG_INPUT'.lower(), '$LANG_INPUT'))" 2>/dev/null || echo "$LANG_INPUT")
+
+ORIGINAL_SRT="${LANGUAGE}.srt"
+ENGLISH_SRT="en.srt"
+
+# Ensure the input file exists
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Error: Input file '$INPUT_FILE' not found."
+    exit 1
 fi
 
 # 1. Strip/Extract the subtitle track from $1 mkv and save as $3.srt
