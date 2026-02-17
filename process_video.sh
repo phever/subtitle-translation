@@ -62,8 +62,12 @@ if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGL
     if [ -f "$FINAL_OUTPUT" ]; then
         mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
         echo "Successfully created: $OUTPUT_FILE"
-        # Cleanup temporary files
-        rm "$ENGLISH_SRT" "$ORIGINAL_SRT"
+        # Keep the English subtitle for reference
+        mv "$ENGLISH_SRT" "$INPUT_FILE.en.srt"
+        read -p "Keep original subtitles? (y/n) " -r reply
+        if [[ $reply =~ ^[Nn]$ ]]; then
+            rm "$ORIGINAL_SRT"
+        fi
     else
         echo "Error: Final output file not found."
         exit 1
