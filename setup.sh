@@ -23,19 +23,9 @@ if ! pip install --upgrade pip && pip install -r requirements.txt; then
     exit 1
 fi
 
-# 3. Build executable
-echo "Building standalone executable with PyInstaller..."
-if ! pyinstaller --onefile translate_subs.py; then
-    echo "Error: PyInstaller build failed."
-    exit 1
-fi
-
-# 4. Success message and instructions
+# 3. Success message and instructions
 echo "------------------------------------------------"
 echo "Setup complete!"
-echo "The standalone executable is located at: dist/translate_subs"
-echo ""
-echo "To use the environment manually:"
-echo "  source venv/bin/activate"
-echo "  python translate_subs.py"
+echo "Try linking ${HOME}/translate-subtitles/process_video.sh"
+echo "to your PATH for easy access"
 echo "------------------------------------------------"
