@@ -50,9 +50,25 @@ fi
 echo "Step 2: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
 if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE" "en"; then
     echo "Success: Subtitle translation completed."
-    # Keep the English subtitle for reference
-    ENGLISH_SRT="${OUTPUT_FILE%.mkv}.en.srt"
-    mv "en.srt" "$ENGLISH_SRT"
+    # Keep the subtitles for reference and naming consistency
+    if [ -n "$OUTPUT_FILE" ]; then
+        BASE_NAME="${OUTPUT_FILE%.*}"
+    else
+        BASE_NAME="${INPUT_FILE%.*}"
+    fi
+    
+    # Rename translated SRT
+    FINAL_EN_SRT="${BASE_NAME}.en.srt"
+    mv "$ENGLISH_SRT" "$FINAL_EN_SRT"
+    ENGLISH_SRT="$FINAL_EN_SRT"
+    
+    # Rename original SRT
+    FINAL_ORIG_SRT="${BASE_NAME}.${LANGUAGE}.srt"
+    mv "$ORIGINAL_SRT" "$FINAL_ORIG_SRT"
+    ORIGINAL_SRT="$FINAL_ORIG_SRT"
+    
+    echo "Success: Translated subtitle saved as $ENGLISH_SRT"
+    echo "Success: Original subtitle saved as $ORIGINAL_SRT"
 else
     echo "Error: Subtitle translation failed."
     exit 1
@@ -61,7 +77,7 @@ fi
 # 4. Merge the $1 mkv with $3.srt and en.srt
 if [[ -n "$OUTPUT_FILE" ]]; then
   echo "Step 3: Merging original and translated subtitles into new mkv..."
-  if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ENGLISH_SRT"; then
+  if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGLISH_SRT"; then
       # The merge_subtitles.py script creates a file with '.final.mkv' suffix
       FINAL_OUTPUT="${INPUT_FILE}.final.mkv"
       if [ -f "$FINAL_OUTPUT" ]; then
