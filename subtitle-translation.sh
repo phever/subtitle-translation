@@ -56,7 +56,7 @@ else
 fi
 
 # 4. Merge the $1 mkv with $3.srt and en.srt
-if [[ "$OUTPUT_FILE" -ne "" ]]; then
+if [[ -n "$OUTPUT_FILE" ]]; then
   echo "Step 3: Merging original and translated subtitles into new mkv..."
   if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
       # The merge_subtitles.py script creates a file with '.final.mkv' suffix
