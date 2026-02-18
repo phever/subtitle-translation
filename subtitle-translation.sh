@@ -66,10 +66,6 @@ if [ -z "$OUTPUT_FILE" ]; then
           echo "Successfully created: $OUTPUT_FILE"
           # Keep the English subtitle for reference
           mv "$ENGLISH_SRT" "${OUTPUT_FILE%.mkv}.en.srt"
-          read -p "Keep original subtitles? (y/n) " -r reply
-          if [[ $reply =~ ^[Nn]$ ]]; then
-              rm "$ORIGINAL_SRT"
-          fi
       else
           echo "Error: Final output file not found."
           exit 1
