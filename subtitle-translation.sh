@@ -1,15 +1,16 @@
 #!/bin/bash
 
 # Check if correct number of arguments are provided
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <input_file> <output_file> <language_name_or_code>"
-    echo "Example: $0 movie.mkv movie_with_english.mkv swedish"
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+    echo "Usage: $0 <input_file> <language_name_or_code> [output_file]"
+    echo "Example: $0 movie.mkv swedish"
+    echo "Example: $0 movie.mkv swedish movie_with_subtitles.mkv"
     exit 1
 fi
 
 INPUT_FILE="$1"
-OUTPUT_FILE="$2"
-LANG_INPUT="$3"
+LANG_INPUT="$2"
+OUTPUT_FILE="$3"
 
 SCRIPT_DIR="${HOME}/subtitle-translation"
 MERGE_SCRIPT="merge_subtitles.py"
@@ -54,27 +55,29 @@ else
     exit 1
 fi
 
-# 4. Merge the $1 mkv (stripped) with $3.srt and en.srt
-echo "Step 3: Merging original and translated subtitles into new mkv..."
-if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
-    # The merge_subtitles.py script creates a file with '.final.mkv' suffix
-    FINAL_OUTPUT="${INPUT_FILE}.final.mkv"
-    if [ -f "$FINAL_OUTPUT" ]; then
-        mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
-        echo "Successfully created: $OUTPUT_FILE"
-        # Keep the English subtitle for reference
-        mv "$ENGLISH_SRT" "$INPUT_FILE.en.srt"
-        read -p "Keep original subtitles? (y/n) " -r reply
-        if [[ $reply =~ ^[Nn]$ ]]; then
-            rm "$ORIGINAL_SRT"
-        fi
-    else
-        echo "Error: Final output file not found."
-        exit 1
-    fi
-else
-    echo "Error: Merging failed."
-    exit 1
+# 4. Merge the $1 mkv with $3.srt and en.srt
+if [ -z "$OUTPUT_FILE" ]; then
+  echo "Step 3: Merging original and translated subtitles into new mkv..."
+  if $PYTHON_EXEC "$SCRIPT_DIR/$MERGE_SCRIPT" "$INPUT_FILE" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE"; then
+      # The merge_subtitles.py script creates a file with '.final.mkv' suffix
+      FINAL_OUTPUT="${INPUT_FILE}.final.mkv"
+      if [ -f "$FINAL_OUTPUT" ]; then
+          mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
+          echo "Successfully created: $OUTPUT_FILE"
+          # Keep the English subtitle for reference
+          mv "$ENGLISH_SRT" "${OUTPUT_FILE%.mkv}.en.srt"
+          read -p "Keep original subtitles? (y/n) " -r reply
+          if [[ $reply =~ ^[Nn]$ ]]; then
+              rm "$ORIGINAL_SRT"
+          fi
+      else
+          echo "Error: Final output file not found."
+          exit 1
+      fi
+  else
+      echo "Error: Merging failed."
+      exit 1
+  fi
 fi
 
 echo "Processing complete."
