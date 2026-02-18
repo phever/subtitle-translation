@@ -51,7 +51,8 @@ echo "Step 2: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
 if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE" "en"; then
     echo "Success: Subtitle translation completed."
     # Keep the English subtitle for reference
-    mv "$ENGLISH_SRT" "${OUTPUT_FILE%.mkv}.en.srt"
+    ENGLISH_SRT="${OUTPUT_FILE%.mkv}.en.srt"
+    mv "en.srt" "$ENGLISH_SRT"
 else
     echo "Error: Subtitle translation failed."
     exit 1
