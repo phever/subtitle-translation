@@ -50,6 +50,8 @@ fi
 echo "Step 2: Translating $ORIGINAL_SRT to $ENGLISH_SRT..."
 if $PYTHON_EXEC "$SCRIPT_DIR/$TRANSLATION_SCRIPT" "$ORIGINAL_SRT" "$ENGLISH_SRT" "$LANGUAGE" "en"; then
     echo "Success: Subtitle translation completed."
+    # Keep the English subtitle for reference
+    mv "$ENGLISH_SRT" "${OUTPUT_FILE%.mkv}.en.srt"
 else
     echo "Error: Subtitle translation failed."
     exit 1
@@ -64,8 +66,6 @@ if [[ -n "$OUTPUT_FILE" ]]; then
       if [ -f "$FINAL_OUTPUT" ]; then
           mv "$FINAL_OUTPUT" "$OUTPUT_FILE"
           echo "Successfully created: $OUTPUT_FILE"
-          # Keep the English subtitle for reference
-          mv "$ENGLISH_SRT" "${OUTPUT_FILE%.mkv}.en.srt"
       else
           echo "Error: Final output file not found."
           exit 1
